@@ -1,0 +1,26 @@
+[package]
+version = "1.0.0"
+category = "Visualization"
+title = "datacenter_monitor"
+description = "Datacenter Digital Twin - Kafka driven visualization with WebRTC interaction"
+authors = []
+keywords = ["datacenter", "kafka", "digital-twin", "usd-viewer"]
+changelog = "docs/CHANGELOG.md"
+readme  = "docs/README.md"
+writeTarget.kit = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Isaac Sim 의존성 없음. USD Viewer 기반입니다.
+#
+# [수정 포인트 - DEPENDENCIES]
+# omni.kit.livestream.webrtc 버전이 다른 경우 아래 이름을 환경에 맞게 수정하세요.
+# Kit 버전에 따라 "omni.kit.livestream.native" 가 필요할 수도 있습니다.
+# ─────────────────────────────────────────────────────────────────────────────
+[dependencies]
+"omni.usd"                   = {}              # USD stage 접근
+"omni.kit.viewport.utility"  = {}              # 카메라 제어
+"omni.kit.commands"          = {}              # undo/redo 호환 명령 실행
+"omni.kit.livestream.webrtc" = { optional = true }  # WebRTC 메시지 송수신 (streaming kit에서만 사용 가능)
+
+[[python.module]]
+name = "datacenter_monitor_python"

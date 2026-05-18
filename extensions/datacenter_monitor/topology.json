@@ -1,0 +1,81 @@
+{
+    "datax": {
+    "Rack_42U_A3": {
+        "Box_1U_1G_Switch":   [],
+        "Box_1U_100G_Switch": [],
+        "Box_1U_Control_2":   ["datax-ctrlpln-2-k8s-cp2", "datax-ctrlpln-2-k8s-cp3"],
+        "Box_2U_Control_1":   ["datax-ctrlpln-1-k8s-cp1", "datax-ctrlpln-1-k8s-worker1"],
+        "Box_4U_HDD_1":       ["datax-hdd-1"],
+        "Box_4U_HDD_2":       ["datax-hdd-2"],
+        "Box_1U_E1S":         ["datax-e1s-1"],
+        "Box_2U_E3S_1":       ["datax-e3s-1"],
+        "Box_2U_U2_1":        ["datax-u2-1-a"],
+        "Box_1U_DTN_1":       ["datax-dtn-1"],
+        "Box_1U_DTN_2":       ["datax-dtn-2"],
+        "Box_1U_DTN_3":       ["datax-dtn-3"],
+        "Box_1U_DTN_4":       ["datax-dtn-4"]
+    }
+    },
+    "twinx": {
+    "Rack_42U_A4": {
+        "Box_2U_ARM_Server":  [],
+        "Box_1U_100G_Switch": [],
+        "Box_1U_1G_Switch":   [],
+        "Box_2U_SV4000_1":    ["sv4000-1"],
+        "Box_2U_SV4000_2":    ["sv4000-2"],
+        "Box_2U_RM352_1":     ["rm352-1"],
+        "Box_2U_RM352_2":     ["rm352-2"],
+        "Box_2U_EdgeBox_1":   ["edgebox1"],
+        "Box_2U_EdgeBox_2":   ["edgebox2"],
+        "Box_2U_EdgeBox_3":   ["edgebox3"],
+        "Box_2U_EdgeBox_4":   ["edgebox4"],
+        "Box_1U_E300_1":      ["control1"],
+        "Box_1U_E300_2":      ["control2"],
+        "Box_1U_E300_3":      ["control3"],
+        "Box_4U_L40S":        ["l40s"]
+    }
+    },
+    "mobilex": {
+    "Rack_42U_A1": {
+        "Box_1U_1G_100G_Switch_DC203": [],
+        "Box_1U_1G_Firewall": [],
+        "Box_1U_1G_Switch_GS348T": [],
+        "Box_1U_1G_Switch_Prosafe_s3300": [],
+        "Box_1U_100G_Switch_SN2100": [],
+        "Box_2U_R2308GZ4GC": [],
+        "Box_2U_Supermicro_SYS_221BT_HNTR_4Node": [],
+        "Box_2U_Supermicro_SYS_2029U_TN24R4T_1Node": [],
+        "Box_4U_PureStorage_Flashblade": [],
+        "Box_4U_QCT_QuantaGrid_D52G": [],
+        "Box_1U_PureStorage_Switch_2": [],
+        "Box_1U_PureStorage_Switch_1": [],
+        "Box_1U_Supermicro_1123US_2": [],
+        "Box_1U_Supermicro_1123US_1": [],
+        "Box_6U_DGX_A100": []
+    }
+    },
+    "autox": {
+    "Rack_42U_A5": {
+        "Box_4U_AsusTek_ESC8000A_1": [],
+        "Box_4U_AsusTek_ESC8000A_2": [],
+        "Box_4U_AsusTek_ESC8000A_3": [],
+        "Box_4U_AsusTek_ESC8000A_4": [],
+        "Box_4U_AsusTek_ESC8000A_5": [],
+        "Box_1U_ipTime24000M": [],
+        "Box_1U_100G_Switch_SN2100": []
+    },
+    "Rack_42U_A6": {
+        "Box_1U_E300_1": [],
+        "Box_1U_E300_2": [],
+        "Box_1U_E300_3": [],
+        "Box_2U_SYS_2029BZ_HNR_1": [],
+        "Box_2U_SYS_2029BZ_HNR_2": [],
+        "Box_2U_SYS_2029BZ_HNR_3": [],
+        "Box_1U_Supermicro_AS_1125HS_TNR_1": [],
+        "Box_1U_Supermicro_AS_1125HS_TNR_2": [],
+        "Box_2U_AsusTek_RS7200Q_1": [],
+        "Box_2U_AsusTek_RS7200Q_2": [],
+        "Box_2U_AsusTek_RS7200Q_3": []
+    }
+    }
+}
