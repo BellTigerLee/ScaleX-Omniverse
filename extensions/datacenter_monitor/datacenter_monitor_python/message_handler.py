@@ -177,6 +177,8 @@ class MessageHandler:
                     "nodeId":    node_id,
                     "primPath":  prim_path,
                 })
+                nodes = self._scene_manager.get_node_metrics(prim_path)
+                self.send_node_metrics(prim_path, nodes)
 
         elif msg_type == "node_deselect":
             # Stage D → C
@@ -279,6 +281,16 @@ class MessageHandler:
         self._send_to_client({
             "event_type": "cluster_rank",
             "payload":    payload,
+        })
+
+    def send_node_metrics(self, prim_path: str, nodes: list):
+        """node_inspect 진입 시 prim 에 캐시된 최신 datacenter.metrics 를 전송합니다."""
+        self._send_to_client({
+            "event_type": "node_metrics",
+            "payload": {
+                "primPath": prim_path,
+                "nodes": nodes,
+            },
         })
 
     def send_alert_notification(self, rack_id: str, node_id: str, status: str, metrics: dict):

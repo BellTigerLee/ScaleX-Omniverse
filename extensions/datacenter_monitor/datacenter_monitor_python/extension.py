@@ -185,6 +185,7 @@ class Extension(omni.ext.IExt):
             try:
                 kafka_msg = self._kafka_queue.get_nowait()
                 current_stage = self._view_stage["stage"]
+                self._scene_manager.cache_node_metrics(kafka_msg)
                 # print(
                 #     f"[Extension] 큐 처리 stage={current_stage} "
                 #     f"cluster={kafka_msg.get('cluster') or kafka_msg.get('cluster_id')} "
