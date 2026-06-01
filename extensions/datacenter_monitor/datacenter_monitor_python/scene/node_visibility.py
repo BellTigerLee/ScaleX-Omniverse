@@ -80,10 +80,32 @@ class _NodeVisibilityMixin:
         """
         if not self._stage:
             return
+        cluster_prim_path = self._resolve_cluster_path(cluster_prim_path)
+        self._restore_stage_d_state()
         if hide_others:
             self._set_other_clusters_visibility(cluster_prim_path, visible=False)
+        self._set_glass_cube_suppression_for_cluster_focus(cluster_prim_path)
+        self._set_cluster_racks_visibility(cluster_prim_path, visible=True)
         omni.usd.get_context().get_selection().clear_selected_prim_paths()
         print(f"[SceneManager] cluster_focus: {cluster_prim_path}")
+
+    def _resolve_cluster_path(self, cluster_path_or_id: str) -> str:
+        """React가 cluster id를 보내도 full prim path로 정규화합니다."""
+        if not cluster_path_or_id:
+            return cluster_path_or_id
+
+        raw = cluster_path_or_id.rstrip("/")
+        raw_name = raw.split("/")[-1]
+        raw_lower = raw_name.lower()
+
+        for cluster_name, cluster_path in self._cluster_paths.items():
+            cluster_lower = cluster_name.lower()
+            cluster_alias = cluster_lower
+            if cluster_alias.endswith("_cluster"):
+                cluster_alias = cluster_alias[: -len("_cluster")]
+            if raw == cluster_path or raw_name == cluster_name or raw_lower in (cluster_lower, cluster_alias):
+                return cluster_path
+        return cluster_path_or_id
 
     def _set_other_clusters_visibility(self, selected_cluster_path: str, visible: bool):
         """선택된 cluster를 제외한 나머지의 visibility를 설정합니다."""
@@ -111,8 +133,10 @@ class _NodeVisibilityMixin:
         """
         if not self._stage:
             return
+        self._restore_stage_d_state()
         if hide_others:
             self._set_other_racks_visibility(rack_prim_path, visible=False)
+        self._set_glass_cube_suppression_for_rack_focus(rack_prim_path)
 
         # Stage C 캐시 구축 ── 이후 node_inspect / node_deselect 에서 재사용
         self._cache_rack_nodes(rack_prim_path)
@@ -135,6 +159,61 @@ class _NodeVisibilityMixin:
                     UsdGeom.Imageable(prim).MakeVisible()
                 else:
                     UsdGeom.Imageable(prim).MakeInvisible()
+
+    def _set_cluster_racks_visibility(self, cluster_prim_path: str, visible: bool):
+        """cluster_focus 진입 시 선택 cluster 내부 rack visibility를 정규화합니다."""
+        cluster_name = cluster_prim_path.rstrip("/").split("/")[-1]
+        cluster_alias = cluster_name.lower()
+        if cluster_alias.endswith("_cluster"):
+            cluster_alias = cluster_alias[: -len("_cluster")]
+
+        prefixes = (f"{cluster_name}/", f"{cluster_alias}/")
+        for rack_key, rack_path in self._rack_paths.items():
+            if not rack_key.startswith(prefixes):
+                continue
+            prim = self._stage.GetPrimAtPath(rack_path)
+            if not prim or not prim.IsValid():
+                continue
+            if visible:
+                UsdGeom.Imageable(prim).MakeVisible()
+            else:
+                UsdGeom.Imageable(prim).MakeInvisible()
+
+    def _node_paths_for_rack_path(self, rack_prim_path: str) -> list[str]:
+        """rack prim path 하위 node path 목록을 반환합니다."""
+        rack_key = next((k for k, v in self._rack_paths.items() if v == rack_prim_path), None)
+        if rack_key is None:
+            return []
+        prefix = rack_key + "/"
+        return [path for key, path in self._server_index.items() if key.startswith(prefix)]
+
+    def _node_paths_for_cluster_path(self, cluster_prim_path: str) -> list[str]:
+        """cluster prim path 하위 node path 목록을 반환합니다."""
+        cluster_name = cluster_prim_path.rstrip("/").split("/")[-1]
+        prefix = cluster_name + "/"
+        return [path for key, path in self._server_index.items() if key.startswith(prefix)]
+
+    def _set_glass_cube_suppression_for_rack_focus(self, selected_rack_path: str):
+        """Stage C에서 선택 rack 외 overlay pulse를 무력화합니다."""
+        selected_nodes = set(self._node_paths_for_rack_path(selected_rack_path))
+        hidden_nodes = [
+            node_path for rack_path in set(self._rack_paths.values())
+            if rack_path != selected_rack_path
+            for node_path in self._node_paths_for_rack_path(rack_path)
+        ]
+        self._unsuppress_glass_cubes(selected_nodes)
+        self._suppress_glass_cubes(hidden_nodes)
+
+    def _set_glass_cube_suppression_for_cluster_focus(self, selected_cluster_path: str):
+        """Stage B에서 선택 cluster 밖 overlay pulse를 무력화합니다."""
+        selected_nodes = set(self._node_paths_for_cluster_path(selected_cluster_path))
+        hidden_nodes = [
+            node_path for cluster_path in self._cluster_paths.values()
+            if cluster_path != selected_cluster_path
+            for node_path in self._node_paths_for_cluster_path(cluster_path)
+        ]
+        self._unsuppress_glass_cubes(selected_nodes)
+        self._suppress_glass_cubes(hidden_nodes)
 
     # ──────────────────────────────────────────────────────────────────────
     # MDL 셰이더 Input 탐색 헬퍼
@@ -381,6 +460,33 @@ class _NodeVisibilityMixin:
         else:
             self._restore_rack_nodes_opacity()
 
+    def _restore_popped_nodes(self):
+        """Stage D에서 pop-forward된 모든 node를 저장된 원래 위치로 되돌립니다."""
+        for node_path, original_pos in list(self._node_original_translate.items()):
+            prim = self._stage.GetPrimAtPath(node_path)
+            if prim and prim.IsValid():
+                for op in UsdGeom.Xformable(prim).GetOrderedXformOps():
+                    if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+                        op.Set(original_pos)
+                        break
+        self._node_original_translate.clear()
+
+    def _clear_stage_c_cache(self):
+        """Rack focus에서 만든 dim/cache 상태를 비웁니다."""
+        self._rack_node_paths_cache      = []
+        self._node_dim_handles           = {}
+        self._rack_chassis_handle        = None
+        self._rack_glass_imageable_cache = []
+
+    def _restore_stage_d_state(self):
+        """Cluster/Rack 전환 전에 Stage D의 pop/dim 잔여 상태를 제거합니다."""
+        if self._current_inspected_node is None and not self._node_original_translate:
+            return
+        self._restore_rack_nodes_opacity()
+        self._restore_popped_nodes()
+        self._current_inspected_node = None
+        self._clear_stage_c_cache()
+
     # ──────────────────────────────────────────────────────────────────────
     # Stage C → D : Node 인스펙션 (pop-forward)
     # ──────────────────────────────────────────────────────────────────────
@@ -430,12 +536,13 @@ class _NodeVisibilityMixin:
         if translate_op is None:
             translate_op = xformable.AddTranslateOp()
 
-        current = translate_op.Get() or Gf.Vec3d(0, 0, 0)
         if node_prim_path not in self._node_original_translate:
+            current = translate_op.Get() or Gf.Vec3d(0, 0, 0)
             self._node_original_translate[node_prim_path] = Gf.Vec3d(current)
+        original = self._node_original_translate[node_prim_path]
 
         pop_offset = Gf.Vec3d(-pop_distance, 0, 0)
-        translate_op.Set(Gf.Vec3d(current) + pop_offset)
+        translate_op.Set(Gf.Vec3d(original) + pop_offset)
 
         # ④ 선택 노드 기록 + 투명화 플래그에 따라 dim 조건부 적용
         self._current_inspected_node = node_prim_path
@@ -461,14 +568,7 @@ class _NodeVisibilityMixin:
             return
 
         # pop-forward 복원
-        if node_prim_path in self._node_original_translate:
-            prim = self._stage.GetPrimAtPath(node_prim_path)
-            if prim and prim.IsValid():
-                for op in UsdGeom.Xformable(prim).GetOrderedXformOps():
-                    if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
-                        op.Set(self._node_original_translate[node_prim_path])
-                        break
-            del self._node_original_translate[node_prim_path]
+        self._restore_popped_nodes()
 
         # dim 복원
         self._restore_rack_nodes_opacity()
@@ -486,18 +586,21 @@ class _NodeVisibilityMixin:
     # ──────────────────────────────────────────────────────────────────────
 
     def rack_deselect_to_cluster(self, rack_prim_path: str, cluster_prim_path: str):
-        """Rack 뷰(Stage C)에서 Cluster 뷰(Stage B)로 복귀합니다.
-        rack visibility는 복원하지 않음 — scene_reset(→ Stage A)에서만 복원합니다.
+        """Rack/Node 뷰에서 Cluster 뷰(Stage B)로 복귀합니다.
+        선택 cluster 내부 rack visibility와 Stage D pop 상태를 함께 복원합니다.
         """
         if not self._stage:
             return
 
+        cluster_prim_path = self._resolve_cluster_path(cluster_prim_path)
+
         # dim이 걸려있을 경우 복원 후 Stage C 캐시 비움
         self._restore_rack_nodes_opacity()
-        self._rack_node_paths_cache      = []
-        self._node_dim_handles           = {}
-        self._rack_chassis_handle        = None
-        self._rack_glass_imageable_cache = []
+        self._restore_popped_nodes()
+        self._current_inspected_node     = None
+        self._clear_stage_c_cache()
+        self._set_glass_cube_suppression_for_cluster_focus(cluster_prim_path)
+        self._set_cluster_racks_visibility(cluster_prim_path, visible=True)
 
         # 모든 node 색상 초기화 (Stage C에서 적용된 색상 제거)
         for node_path in list(self._node_material_cache.keys()):

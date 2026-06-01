@@ -216,5 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated/local artifacts
+assets/
+extensions/datacenter_monitor/assets/
+*.png
+NvStreamer*
 extensions/datacenter_monitor/config/active
-extensions/datacenter_monitor/assets
