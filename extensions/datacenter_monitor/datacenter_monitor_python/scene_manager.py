@@ -88,6 +88,7 @@ class SceneManager(
         self._topology_cache = None
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
+        self._clear_glass_cube_suppression()
         self._node_original_translate.clear()
 
         pos, target = self._read_cam_pos_target()
@@ -110,6 +111,7 @@ class SceneManager(
         self._cluster_box_index.clear()
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
+        self._clear_glass_cube_suppression()
         self._node_original_translate.clear()
         # Stage C 캐시 (_NodeVisibilityMixin)
         self._rack_node_paths_cache      = []
@@ -129,6 +131,8 @@ class SceneManager(
         """모든 cluster/rack visibility 복원, pop-forward 복원, 색상 초기화, 카메라 원위치."""
         if not self._stage:
             return
+
+        self._clear_glass_cube_suppression()
 
         # 모든 cluster visibility 복원
         for cluster_path in self._cluster_paths.values():

@@ -46,6 +46,9 @@ class _MaterialMixin:
         # Overlay Cube 셰이더 입력/가시성 캐시
         # { node_path: {"diffuse": Input, "emissive": Input, "imageable": Imageable} }
         self._glass_cube_cache: dict[str, dict] = {}
+        # Stage visibility가 우선되어야 하는 노드. 여기에 들어간 GlassCube는
+        # Kafka pulse가 와도 visible로 올라오지 않는다.
+        self._glass_cube_suppressed_nodes: set[str] = set()
         # Cylinder 인디케이터 캐시 (미사용)
         # self._node_cylinders: dict[str, list] = {}
 
@@ -296,6 +299,7 @@ class _MaterialMixin:
         imageable.MakeInvisible()
 
         self._glass_cube_cache[node_path] = {
+            "node_path": node_path,
             "diffuse": diffuse_in,
             "emissive": emissive_in,
             "opacity": opacity_in,
@@ -307,6 +311,11 @@ class _MaterialMixin:
 
     def _show_glass_cube(self, handles: dict) -> None:
         """Overlay cube를 visible + opacity=1로 보이게 한다."""
+        node_path = handles.get("node_path")
+        if node_path in self._glass_cube_suppressed_nodes:
+            self._hide_glass_cube(handles)
+            return
+
         diffuse = handles.get("diffuse")
         if diffuse:
             diffuse.Set(_OVERLAY_DEFAULT_COLOR)
@@ -331,6 +340,24 @@ class _MaterialMixin:
         if opacity:
             opacity.Set(0.0)
         handles["imageable"].MakeInvisible()
+
+    def _suppress_glass_cubes(self, node_paths) -> None:
+        """숨겨진 rack/cluster의 overlay pulse를 중지하고 invisible로 고정합니다."""
+        for node_path in node_paths:
+            self._glass_cube_suppressed_nodes.add(node_path)
+            self._node_pulse_start.pop(node_path, None)
+            handles = self._glass_cube_cache.get(node_path)
+            if handles:
+                self._hide_glass_cube(handles)
+
+    def _unsuppress_glass_cubes(self, node_paths) -> None:
+        """다시 보이는 rack/cluster의 overlay pulse 억제를 해제합니다."""
+        for node_path in node_paths:
+            self._glass_cube_suppressed_nodes.discard(node_path)
+
+    def _clear_glass_cube_suppression(self) -> None:
+        """Stage A/reset 진입 시 overlay pulse 억제를 모두 해제합니다."""
+        self._glass_cube_suppressed_nodes.clear()
 
     # ──────────────────────────────────────────────────────────────────────
     # Overlay Cube 색상 업데이트
@@ -461,6 +488,10 @@ class _MaterialMixin:
         if not handles:
             return
 
+        if prim_path in self._glass_cube_suppressed_nodes:
+            self._hide_glass_cube(handles)
+            return
+
         if status == "HEALTHY":
             self._show_glass_cube(handles)
             self._node_pulse_start[prim_path] = time.monotonic()
@@ -474,6 +505,12 @@ class _MaterialMixin:
         이 경로에서는 색상 pulse/emissive 를 쓰지 않는다.
         """
         expired: list[str] = []
+        for node_path in list(self._glass_cube_suppressed_nodes):
+            self._node_pulse_start.pop(node_path, None)
+            handles = self._glass_cube_cache.get(node_path)
+            if handles:
+                self._hide_glass_cube(handles)
+
         for node_path, start_sec in self._node_pulse_start.items():
             if now_sec - start_sec < _OVERLAY_HEALTH_BLINK_SEC:
                 continue
