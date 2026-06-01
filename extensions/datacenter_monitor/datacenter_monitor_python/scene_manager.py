@@ -8,6 +8,7 @@ USD 씬 조작 전담 클래스. 반드시 Kit 메인 스레드에서 호출해�
   scene/topology.py        → _TopologyMixin           (USD 씬 계층 탐색·인덱싱)
   scene/node_visibility.py → _NodeVisibilityMixin     (Cluster/Rack/Node 가시성·Stage 전환)
   scene/material.py        → _MaterialMixin           (Glass Cube 생성·상태 색상 업데이트)
+  scene/node_metrics.py    → _NodeMetricsMixin        (prim 별 최신 datacenter.metrics 캐시)
   scene/alert.py           → _AlertMixin              (Rack 경고 마커)
   scene/event_alert.py     → _EventAlertMixin         (Kafka 이벤트 ImagePanel 패널)
 
@@ -22,6 +23,8 @@ USD 씬 조작 전담 클래스. 반드시 Kit 메인 스레드에서 호출해�
   node_deselect()                 — Stage D → C (_NodeVisibilityMixin)
   rack_deselect_to_cluster()      — Stage C → B (_NodeVisibilityMixin)
   scene_reset()                   — 어디서든 → Stage A (여기서 오케스트레이션)
+  cache_node_metrics()            — datacenter.metrics 최신값 prim 별 캐시 (_NodeMetricsMixin)
+  get_node_metrics()              — node_inspect 시 prim 의 최신 metrics 반환 (_NodeMetricsMixin)
   update_node_color_from_kafka()  — Kafka 상태 색상 업데이트 (_MaterialMixin)
   tick_camera_animation()         — 매 프레임 카메라 애니메이션 진행 (_CameraControllerMixin)
   create_alert_decal()            — Rack 경고 마커 생성 (_AlertMixin)
@@ -41,6 +44,7 @@ from .scene.camera         import _CameraControllerMixin
 from .scene.topology       import _TopologyMixin
 from .scene.node_visibility import _NodeVisibilityMixin
 from .scene.material       import _MaterialMixin
+from .scene.node_metrics   import _NodeMetricsMixin
 from .scene.alert          import _AlertMixin
 from .scene.event_alert    import _EventAlertMixin
 
@@ -50,6 +54,7 @@ class SceneManager(
     _TopologyMixin,
     _NodeVisibilityMixin,
     _MaterialMixin,
+    _NodeMetricsMixin,
     _AlertMixin,
     _EventAlertMixin,
 ):
@@ -66,6 +71,7 @@ class SceneManager(
         self._init_topology()         # _cluster_paths, _rack_paths, _server_index, _cluster_box_index
         self._init_material()         # _node_material_cache
         self._init_node_state()       # _node_status
+        self._init_node_metrics()     # _node_metrics_cache
         self._init_node_visibility()  # _node_original_translate
         self._init_camera()           # _cam_anim, _cam_current, _cam_overview
         self._init_event_alert()      # _active_panels
@@ -89,6 +95,7 @@ class SceneManager(
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
         self._clear_glass_cube_suppression()
+        self._node_metrics_cache.clear()
         self._node_original_translate.clear()
 
         pos, target = self._read_cam_pos_target()
@@ -112,6 +119,7 @@ class SceneManager(
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
         self._clear_glass_cube_suppression()
+        self._node_metrics_cache.clear()
         self._node_original_translate.clear()
         # Stage C 캐시 (_NodeVisibilityMixin)
         self._rack_node_paths_cache      = []

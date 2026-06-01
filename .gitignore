@@ -219,5 +219,7 @@ __marimo__/
 
 # Generated/local artifacts
 assets/
+extensions/datacenter_monitor/assets/
 *.png
 NvStreamer*
+extensions/datacenter_monitor/config/active
