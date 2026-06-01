@@ -216,4 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-NvStreamer-*
+
+# Generated/local artifacts
+assets/
+*.png
+NvStreamer*
