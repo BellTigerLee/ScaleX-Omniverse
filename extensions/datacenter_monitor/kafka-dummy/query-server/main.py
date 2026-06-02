@@ -7,7 +7,8 @@ React 대시보드 백엔드. Live 메트릭, 히스토리 조회, Replay 제어
 event_ts 는 0~599 초 오프셋입니다.
 
 엔드포인트:
-  GET  /turn-credentials
+  # [수정] Cloudflare TURN credential 발급 엔드포인트는 직접 WebRTC 연결만 사용하도록 비활성화합니다.
+  # GET  /turn-credentials
   GET  /health
   GET  /topology
   GET  /metrics/latest                                     ← LiveCache (Trino 불필요)
@@ -22,10 +23,11 @@ event_ts 는 0~599 초 오프셋입니다.
 Swagger UI: http://localhost:8000/docs
 """
 
-import asyncio
-import os
+# [수정] Cloudflare TURN credential 발급에만 쓰던 asyncio/os/httpx 의존성은 엔드포인트와 함께 주석 처리합니다.
+# import asyncio
+# import os
 import time
-import httpx
+# import httpx
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException
@@ -106,66 +108,68 @@ app.add_middleware(
 )
 
 # ── Cloudflare TURN Credentials ──────────────────────────────────────────────
-
-_CF_TURN_KEY_ID = os.environ.get("CF_TURN_KEY_ID", "")
-_CF_API_TOKEN   = os.environ.get("CF_API_TOKEN", "")
-_CF_TTL         = 86400          # Cloudflare TURN credentials TTL (초)
-_CACHE_TTL      = int(_CF_TTL * 0.8)  # 재발급 기준: TTL의 80% (69120초 ≈ 19.2시간)
-
-_turn_cache: dict = {"iceServers": None, "expires_at": 0.0}
-_turn_cache_lock = asyncio.Lock()
-
-
-@app.get("/turn-credentials", tags=["webrtc"])
-async def turn_credentials():
-    """
-    Cloudflare TURN ICE server credentials를 반환합니다.
-    서버 메모리에 캐싱하며 TTL의 80% 경과 시 자동 재발급합니다.
-    """
-    now = time.time()
-    # 빠른 경로: 락 없이 캐시 확인
-    if _turn_cache["iceServers"] and now < _turn_cache["expires_at"]:
-        return {"iceServers": _turn_cache["iceServers"]}
-
-    async with _turn_cache_lock:
-        # 락 획득 후 재확인 (다른 요청이 이미 갱신했을 수 있음)
-        now = time.time()
-        if _turn_cache["iceServers"] and now < _turn_cache["expires_at"]:
-            return {"iceServers": _turn_cache["iceServers"]}
-
-        if not _CF_TURN_KEY_ID or not _CF_API_TOKEN:
-            raise HTTPException(
-                status_code=503,
-                detail="Cloudflare TURN 환경변수(CF_TURN_KEY_ID, CF_API_TOKEN)가 설정되지 않았습니다."
-            )
-
-        url = (
-            f"https://rtc.live.cloudflare.com/v1/turn/keys"
-            f"/{_CF_TURN_KEY_ID}/credentials/generate-ice-servers"
-        )
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                url,
-                headers={
-                    "Authorization": f"Bearer {_CF_API_TOKEN}",
-                    "Content-Type": "application/json",
-                },
-                json={"ttl": _CF_TTL},
-            )
-
-        if resp.status_code >= 300:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Cloudflare TURN API 호출 실패: {resp.status_code} {resp.text[:200]}"
-            )
-
-        data = resp.json()
-        ice_servers = data.get("iceServers", [])
-
-        _turn_cache["iceServers"] = ice_servers
-        _turn_cache["expires_at"] = time.time() + _CACHE_TTL
-
-        return {"iceServers": ice_servers}
+# [수정] Cloudflare TURN 서버를 사용하지 않고 Omniverse 서버와 직접 WebRTC 연결만 사용하도록
+# legacy demo backend의 /turn-credentials 발급 로직을 삭제하지 않고 주석 처리합니다.
+#
+# _CF_TURN_KEY_ID = os.environ.get("CF_TURN_KEY_ID", "")
+# _CF_API_TOKEN   = os.environ.get("CF_API_TOKEN", "")
+# _CF_TTL         = 86400          # Cloudflare TURN credentials TTL (초)
+# _CACHE_TTL      = int(_CF_TTL * 0.8)  # 재발급 기준: TTL의 80% (69120초 ≈ 19.2시간)
+#
+# _turn_cache: dict = {"iceServers": None, "expires_at": 0.0}
+# _turn_cache_lock = asyncio.Lock()
+#
+#
+# @app.get("/turn-credentials", tags=["webrtc"])
+# async def turn_credentials():
+#     """
+#     Cloudflare TURN ICE server credentials를 반환합니다.
+#     서버 메모리에 캐싱하며 TTL의 80% 경과 시 자동 재발급합니다.
+#     """
+#     now = time.time()
+#     # 빠른 경로: 락 없이 캐시 확인
+#     if _turn_cache["iceServers"] and now < _turn_cache["expires_at"]:
+#         return {"iceServers": _turn_cache["iceServers"]}
+#
+#     async with _turn_cache_lock:
+#         # 락 획득 후 재확인 (다른 요청이 이미 갱신했을 수 있음)
+#         now = time.time()
+#         if _turn_cache["iceServers"] and now < _turn_cache["expires_at"]:
+#             return {"iceServers": _turn_cache["iceServers"]}
+#
+#         if not _CF_TURN_KEY_ID or not _CF_API_TOKEN:
+#             raise HTTPException(
+#                 status_code=503,
+#                 detail="Cloudflare TURN 환경변수(CF_TURN_KEY_ID, CF_API_TOKEN)가 설정되지 않았습니다."
+#             )
+#
+#         url = (
+#             f"https://rtc.live.cloudflare.com/v1/turn/keys"
+#             f"/{_CF_TURN_KEY_ID}/credentials/generate-ice-servers"
+#         )
+#         async with httpx.AsyncClient(timeout=10.0) as client:
+#             resp = await client.post(
+#                 url,
+#                 headers={
+#                     "Authorization": f"Bearer {_CF_API_TOKEN}",
+#                     "Content-Type": "application/json",
+#                 },
+#                 json={"ttl": _CF_TTL},
+#             )
+#
+#         if resp.status_code >= 300:
+#             raise HTTPException(
+#                 status_code=503,
+#                 detail=f"Cloudflare TURN API 호출 실패: {resp.status_code} {resp.text[:200]}"
+#             )
+#
+#         data = resp.json()
+#         ice_servers = data.get("iceServers", [])
+#
+#         _turn_cache["iceServers"] = ice_servers
+#         _turn_cache["expires_at"] = time.time() + _CACHE_TTL
+#
+#         return {"iceServers": ice_servers}
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
