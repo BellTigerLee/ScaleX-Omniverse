@@ -70,3 +70,11 @@ Do not hard-code cluster endpoints, credentials, or local paths in Python module
 cluster profiles as `config/env.<name>` and activate them with `DC_PROFILE=<name>` or an
 `active` symlink. Keep generated data, local secrets, and machine-specific Omniverse files
 out of version control.
+
+## Implementation Tracking
+
+`extensions/datacenter_monitor/IMPLEMENTATION-PLAN.md` tracks the mockup→production gaps for the
+extension (power/rtt/storage visualization, reasons-driven alert UI, USD prim hardcoding). It
+references the workspace-root `INTEGRATION-GAP-ANALYSIS.md` master doc and its `[GAP-n]` IDs.
+Reminder: color/state is driven only by `datacenter.metrics.node-state.events`; the `status`
+field on `datacenter.metrics` is a placeholder and its color path is intentionally disabled.
