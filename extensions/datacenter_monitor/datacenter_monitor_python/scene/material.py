@@ -20,6 +20,7 @@ from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade
 from ..global_variables import (
     FRONT_PANEL_MATERIAL_KEYWORD,
     SHADER_KEYWORD,
+    GLASS_CUBE_PULSE_ENABLED,
     GLASS_CUBE_ENABLE_EMISSION,
     GLASS_CUBE_HEALTHY_COLOR,
     GLASS_CUBE_WARNING_COLOR,
@@ -492,6 +493,13 @@ class _MaterialMixin:
             self._hide_glass_cube(handles)
             return
 
+        # [수정] DC_GLASS_CUBE_PULSE=0 이면 메트릭(node-state) 수신 시 GlassCube 를
+        #        반짝이지 않게 한다 — visible 로 올리지 않고 항상 숨김 유지.
+        if not GLASS_CUBE_PULSE_ENABLED:
+            self._node_pulse_start.pop(prim_path, None)
+            self._hide_glass_cube(handles)
+            return
+
         if status == "HEALTHY":
             self._show_glass_cube(handles)
             self._node_pulse_start[prim_path] = time.monotonic()
@@ -504,6 +512,11 @@ class _MaterialMixin:
         HEALTHY 수신으로 잠깐 visible 된 overlay cube 를 다시 invisible 로 내린다.
         이 경로에서는 색상 pulse/emissive 를 쓰지 않는다.
         """
+        # [수정] DC_GLASS_CUBE_PULSE=0 이면 반짝임 자체가 비활성화되어
+        #        apply_node_state 에서 cube 를 visible 로 올리지 않으므로 매 프레임 처리 불필요(no-op).
+        if not GLASS_CUBE_PULSE_ENABLED:
+            return
+
         expired: list[str] = []
         for node_path in list(self._glass_cube_suppressed_nodes):
             self._node_pulse_start.pop(node_path, None)
