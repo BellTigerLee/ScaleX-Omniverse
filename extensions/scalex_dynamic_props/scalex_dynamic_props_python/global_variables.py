@@ -106,8 +106,8 @@ VIEW_PLANE_ST = [(0.0, 1.0), (0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]  # faceVarying 
 VIEW_PLANE_EXTENT = [(-50.0, 0.0, -50.0), (50.0, 0.0, 50.0)]
 
 # 3.3 Transform — xformOpOrder = [translate, rotateXYZ, scale].
-VIEW_PLANE_TRANSLATE = (154.75734, 60.61392, -412.37006)
-VIEW_PLANE_ROTATE_XYZ = (-97.0, 244.0, 180.0)
+VIEW_PLANE_TRANSLATE = (230.99456, 152.02296, -412.37006)
+VIEW_PLANE_ROTATE_XYZ = (0.0, 270.0, 90.0)
 VIEW_PLANE_SCALE = (1.6, 1.0, 0.9)
 
 # 3.4 OmniPBR 머티리얼 — /World/Looks 아래 생성, Albedo(diffuse_texture) 만 지정.
