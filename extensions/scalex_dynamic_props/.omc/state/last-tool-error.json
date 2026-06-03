@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd ScaleX-Omniverse/extensions/scalex_dynamic_props/scalex_dynamic_props_python && echo \\\"=== global_variables.py (full) ===\\\" && cat -n global_variables.py && echo \\\"=== scene_builder.py ...",
+  "error": "Exit code 1\n/bin/bash: line 1: cd: ScaleX-Omniverse/extensions/scalex_dynamic_props/scalex_dynamic_props_python: No such file or directory",
+  "timestamp": "2026-06-03T11:17:21.710Z",
+  "retry_count": 1
+}
