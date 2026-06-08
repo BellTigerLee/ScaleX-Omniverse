@@ -6,7 +6,7 @@ USD 씬 계층 자동 탐색 — Cluster / Rack / Box(Node) 구조 인덱싱.
   - discover_topology()       : SCALE_POD_PATH 기반 탐색
   - _discover_topology_flat() : SCALE_POD_PATH 없을 때 fallback 탐색
   - get_cached_topology()     : 캐시 반환 또는 재탐색
-  - normalize_node_x_position(): 모든 노드 X 좌표 정규화
+  - normalize_node_x_position(): 필요 시 수동 호출하는 노드 X 좌표 정규화 helper
 """
 
 from pxr import Gf, Usd, UsdGeom
@@ -15,12 +15,14 @@ from ..global_variables import (
     SCENE_ROOT,
     SCALE_POD_PATH,
     CLUSTER_SUFFIX,
-    RACK_PREFIX,
     BOX_PREFIX,
     NODE_INDEX_URL,
     NODE_X_DEFAULT,
     NODE_X_SPECIAL,
 )
+
+_RACK_42U_PREFIX = "Rack_42U_"
+_EXPLICIT_RACK_NAMES = {"Rack_Switch", "Rack_Control", "Rack_Storage", "Rack_DTN"}
 
 
 class _TopologyMixin:
@@ -50,7 +52,7 @@ class _TopologyMixin:
         탐색 경로:
           SCALE_POD_PATH/
             {Name}_Cluster/    ← CLUSTER_SUFFIX = "_Cluster"
-              Rack_{Name}/     ← RACK_PREFIX = "Rack_"
+              Rack_42U_* or explicit rack names
                 Box_{Name}/    ← BOX_PREFIX = "Box_"
 
         Returns:
@@ -98,8 +100,6 @@ class _TopologyMixin:
         )
         result = {"clusters": clusters, "racks": all_racks}
         self._topology_cache = result
-        if all_racks:
-            self.normalize_node_x_position()
         return result
 
     def _discover_topology_flat(self, root_prim=None) -> dict:
@@ -136,8 +136,6 @@ class _TopologyMixin:
         print(f"[SceneManager] topology (flat) 탐색 완료: {len(all_racks)}개 rack")
         result = {"racks": all_racks}
         self._topology_cache = result
-        if all_racks:
-            self.normalize_node_x_position()
         return result
 
     def _build_cluster_entry(self, cluster_prim):
@@ -217,7 +215,9 @@ class _TopologyMixin:
         return prim.GetName().endswith(CLUSTER_SUFFIX)
 
     def _is_rack_prim(self, prim) -> bool:
-        return prim.GetName().startswith(RACK_PREFIX)
+        name = prim.GetName()
+        # Rack_Mount_* prims are internal rack asset parts, not topology rack containers.
+        return name.startswith(_RACK_42U_PREFIX) or name in _EXPLICIT_RACK_NAMES
 
     def _is_box_prim(self, prim) -> bool:
         return prim.GetName().lower().startswith(BOX_PREFIX.lower())
@@ -323,8 +323,6 @@ class _TopologyMixin:
         )
         result = {"clusters": clusters, "racks": all_racks}
         self._topology_cache = result
-        if all_racks:
-            self.normalize_node_x_position()
         return result
 
     def _get_topology_api_data(self):

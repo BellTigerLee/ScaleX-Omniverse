@@ -11,7 +11,7 @@ Kit extension metadata plus the **endpoint profiles** that keep the Kafka broker
 |------|-------------|
 | `extension.toml` | Kit package metadata + `[dependencies]` (`omni.usd`, `omni.kit.viewport.utility`, `omni.kit.commands`, optional `omni.kit.livestream.webrtc`) + `[[python.module]] name = "datacenter_monitor_python"`. `[수정]` marks the livestream-dependency tweak point |
 | `env.example` | Committed template documenting all keys: `CLUSTER_HOST`, `KAFKA_NODEPORT`, optional `TOPOLOGY_URL`, optional `DEV_FAKE_NODE_MAPPING` |
-| `env.cluster-poc` | PoC cluster profile (`CLUSTER_HOST=10.32.232.216`, `KAFKA_NODEPORT=9092`, `TOPOLOGY_URL=...:8000/topology`) |
+| `env.cluster-poc` | PoC cluster profile (`CLUSTER_HOST=10.30.0.233`, `KAFKA_NODEPORT=9092`, `TOPOLOGY_URL=...:8000/topology`) |
 | `env.cluster-dev` | Dev cluster profile; sets `DEV_FAKE_NODE_MAPPING=true` (local Flink emits node names like `work2..work8` not in topology) |
 | `active` | Symlink to the active profile (gitignored). Currently → `env.cluster-poc` |
 

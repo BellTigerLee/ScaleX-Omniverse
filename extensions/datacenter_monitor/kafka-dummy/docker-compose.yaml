@@ -228,12 +228,12 @@ services:
         condition: service_healthy
     environment:
       # KAFKA_BROKER: kafka:29092
-      KAFKA_BROKER: 10.32.232.216:32569
+      KAFKA_BROKER: 10.30.0.233:32569
       KAFKA_TOPIC: datacenter.metrics
       KAFKA_REPLAY_TOPIC: datacenter.metrics.replay
       KAFKA_EVENT_TOPIC: datacenter.metrics.event
       KAFKA_REPLAY_EVENT_TOPIC: datacenter.metrics.replay.event
-      TRINO_HOST: 10.32.232.216
+      TRINO_HOST: 10.30.0.233
       TRINO_PORT: "31010"
       TRINO_USER: trino
       TRINO_CATALOG: bronze_cat
