@@ -1,4 +1,14 @@
+import os
 from pathlib import Path
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """환경변수를 boolean 으로 파싱. 미설정 시 default. (1/true/yes/on → True)"""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
 
 EXTENSION_TITLE       = "Datacenter Monitor"
 EXTENSION_DESCRIPTION = "Kafka-driven datacenter digital twin with WebRTC interaction"
@@ -194,6 +204,12 @@ NODE_DIM_FRONTPANEL_MODE     = 0.0     # FrontPanelMaterial opacity_mode        
 # 노드 크기에 맞춘 transient overlay cube (UsdPreviewSurface) material 설정.
 # Glass/OmniPBR material은 denoiser 잔상이 생길 수 있어 사용하지 않는다.
 # ─────────────────────────────────────────────────────────────────────────────
+# [수정] GlassCube pulse(반짝임/visibility 깜빡임) ON/OFF 스위치.
+#   node-state(메트릭) 수신 시 GlassCube 를 잠깐 보였다 숨기는 "반짝임" 동작을 토글한다.
+#   환경변수 DC_GLASS_CUBE_PULSE 로 제어:
+#     DC_GLASS_CUBE_PULSE=1/true/on  → 반짝임 ON  (기본값, 기존 동작 유지)
+#     DC_GLASS_CUBE_PULSE=0/false/off → 반짝임 OFF (메트릭 와도 GlassCube 숨김 유지)
+GLASS_CUBE_PULSE_ENABLED     = _env_bool("DC_GLASS_CUBE_PULSE", True)
 GLASS_CUBE_ENABLE_EMISSION   = False
 GLASS_CUBE_OPACITY_CONSTANT  = 0
 GLASS_CUBE_HEALTHY_COLOR      = (0.05, 1.5, 0.05)  # HEALTHY (녹색, 튜닝 대상)

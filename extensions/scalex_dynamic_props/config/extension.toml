@@ -1,0 +1,23 @@
+[package]
+version = "1.0.0"
+category = "Visualization"
+title = "ScaleX Dynamic Props"
+description = "원본 USD 를 오염시키지 않고, 런타임에 세션 레이어로 카드 plane 과 클러스터별 색상 FloorPanel under-panel 을 동적 생성한다."
+authors = []
+keywords = ["scalex", "usd", "procedural", "session-layer", "omnipbr"]
+changelog = "docs/CHANGELOG.md"
+readme = "docs/README.md"
+writeTarget.kit = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# datacenter_monitor 와 동일하게 USD Viewer 기반(Isaac Sim 의존성 없음).
+# 이 익스텐션은 datacenter_monitor 가 여는 ScaleX_Twin 스테이지 위에서 동작하며,
+# 모든 prim 을 "세션 레이어"에만 author 하므로 디스크의 원본 .usd 는 절대 수정되지 않는다.
+# 텍스처/MDL 은 datacenter_monitor 의 assets 를 그대로 참조한다(복제하지 않음).
+# ─────────────────────────────────────────────────────────────────────────────
+[dependencies]
+"omni.usd" = {}                    # USD stage 접근
+"omni.kit.viewport.utility" = {}   # (옵션) 뷰포트 유틸
+
+[[python.module]]
+name = "scalex_dynamic_props_python"

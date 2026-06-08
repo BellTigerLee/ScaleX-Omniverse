@@ -8,7 +8,7 @@ KAFKA_REPLAY_EVENT_TOPIC = os.getenv("KAFKA_REPLAY_EVENT_TOPIC", "datacenter.met
 KAFKA_NODE_STATE_TOPIC = os.getenv("KAFKA_NODE_STATE_TOPIC", "datacenter.metrics.node-state.events")
 KAFKA_GROUP_ID     = os.getenv("KAFKA_GROUP_ID",      "query-server")
 
-TRINO_HOST    = os.getenv("TRINO_HOST",    "10.32.161.108")
+TRINO_HOST    = os.getenv("TRINO_HOST",    "10.32.232.216")
 TRINO_PORT    = int(os.getenv("TRINO_PORT", "31010"))
 TRINO_USER    = os.getenv("TRINO_USER",    "trino")
 TRINO_CATALOG = os.getenv("TRINO_CATALOG", "bronze_cat")

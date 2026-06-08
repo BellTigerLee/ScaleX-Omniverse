@@ -28,7 +28,7 @@ config/
 ### Each profile file declares two values
 
 ```
-CLUSTER_HOST=10.38.36.10     # k8s worker node IP reachable from this machine
+CLUSTER_HOST=10.32.232.216   # k8s worker node IP reachable from this machine
 KAFKA_NODEPORT=31327         # NodePort of the Kafka bootstrap Service
 ```
 
