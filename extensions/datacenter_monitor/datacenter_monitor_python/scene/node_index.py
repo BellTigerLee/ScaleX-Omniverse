@@ -64,11 +64,8 @@ def parse_topology_response(data: dict) -> dict:
     return index
 
 
-def fetch_topology_index(url: str, timeout: float = 5.0) -> Optional[dict]:
-    """
-    Topology URL 에서 JSON 을 받아 parse_topology_response 로 index 생성.
-    네트워크·JSON·스키마 오류 시 경고 로그 + None 반환 (호출자가 fallback 결정).
-    """
+def fetch_topology_response(url: str, timeout: float = 5.0) -> Optional[dict]:
+    """Topology URL 에서 raw JSON dict 를 가져옵니다."""
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8")
@@ -77,9 +74,19 @@ def fetch_topology_index(url: str, timeout: float = 5.0) -> Optional[dict]:
         return None
 
     try:
-        data = json.loads(raw)
+        return json.loads(raw)
     except json.JSONDecodeError as e:
         print(f"[NodeIndex] topology JSON 파싱 실패: {e}")
+        return None
+
+
+def fetch_topology_index(url: str, timeout: float = 5.0) -> Optional[dict]:
+    """
+    Topology URL 에서 JSON 을 받아 parse_topology_response 로 index 생성.
+    네트워크·JSON·스키마 오류 시 경고 로그 + None 반환 (호출자가 fallback 결정).
+    """
+    data = fetch_topology_response(url, timeout=timeout)
+    if data is None:
         return None
 
     try:

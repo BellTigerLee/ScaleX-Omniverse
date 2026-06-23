@@ -20,7 +20,7 @@ EXTENSION_ROOT        = Path(__file__).resolve().parent.parent
 # None 이면 이미 열려있는 stage를 그대로 사용합니다.
 # ─────────────────────────────────────────────────────────────────────────────
 # ↓ 실제 USD 파일 경로로 변경하세요. None이면 자동 로드를 건너뜁니다.
-MAIN_STAGE_USD_PATH = EXTENSION_ROOT / "assets" / "ScaleX_POD_Project" / "ScaleX_Twin.usd"
+MAIN_STAGE_USD_PATH = EXTENSION_ROOT / "assets" / "ScaleX_Twin.usd"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # [수정 포인트 - USD HIERARCHY]
@@ -164,8 +164,7 @@ ALERT_MARKER_Z_OFFSET  = 0.5   # rack 상단에서 얼마나 위에 표시할지
 # Kafka 이벤트(WARNING/CRITICAL) 발생 시 rack 위에 표시할 ImagePanel USD
 # ─────────────────────────────────────────────────────────────────────────────
 IMAGE_PANEL_USD_PATH     = str(
-    EXTENSION_ROOT / "assets" / "ScaleX_POD_Project"
-    / "subcomponents" / "Others" / "ImagePanel.usd"
+    EXTENSION_ROOT / "assets" / "subcomponents" / "Others" / "ImagePanel.usd"
 )
 EVENT_PANEL_LIFETIME_SEC = 5.0   # 패널이 화면에 표시되는 시간 (초)
 
