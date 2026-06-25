@@ -23,6 +23,7 @@ from ..global_variables import (
     GLASS_CUBE_PULSE_ENABLED,
     GLASS_CUBE_ENABLE_EMISSION,
     GLASS_CUBE_HEALTHY_COLOR,
+    GLASS_CUBE_MISSING_COLOR,
     GLASS_CUBE_WARNING_COLOR,
     GLASS_CUBE_CRITICAL_COLOR,
     GLASS_CUBE_EMISSIVE_WARNING,
@@ -60,9 +61,14 @@ class _MaterialMixin:
         # (cluster_lower, node_name) → prim_name — REST topology 에서 로드.
         # 비어있으면 _resolve_prim_path 가 BOX_ prefix 휴리스틱 fallback 을 사용.
         self._cluster_node_to_prim: dict = {}
+        # REST topology raw 응답. USD hierarchy 탐색 실패 시 prim_name 기반 fallback 에 사용.
+        self._topology_api_data: dict | None = None
         # prim_path → HEALTHY 수신 후 visible 로 유지할 시작 시각.
         # tick_pulse 가 짧은 visible 구간 뒤 다시 invisible 로 내린다.
         self._node_pulse_start: dict[str, float] = {}
+        # prim_path 집합. glow/pulse 비활성 상태에서도 DISCONNECTED/MISSING 은
+        # persistent overlay 로 남겨야 하므로 tick_pulse 의 baseline hide 대상에서 제외.
+        self._node_persistent_overlay: set[str] = set()
         # Dev fake mapping: 미등록 node 를 topology prim 에 stable-hash 로 고정 배정.
         # 한번 배정된 노드는 extension 수명 동안 유지 (시각 안정성).
         self._dev_fake_mapping_enabled: bool = False
@@ -129,11 +135,19 @@ class _MaterialMixin:
         URL 에서 토폴로지 JSON 을 받아 (cluster, node) → prim_name 인덱스를 채운다.
         실패 시 기존 인덱스를 유지. 로드된 매핑 개수를 반환.
         """
-        from .node_index import fetch_topology_index
-        index = fetch_topology_index(url)
-        if index is None:
+        from .node_index import fetch_topology_response, parse_topology_response
+        data = fetch_topology_response(url)
+        if data is None:
             print(f"[SceneManager] node index 로드 실패 — fallback 휴리스틱으로 동작 ({url})")
             return 0
+
+        try:
+            index = parse_topology_response(data)
+        except Exception as e:
+            print(f"[SceneManager] node index 스키마 파싱 실패 — fallback 휴리스틱으로 동작 ({e})")
+            return 0
+
+        self._topology_api_data = data
         self._cluster_node_to_prim = index
         print(f"[SceneManager] node index 로드 완료: {len(index)}개 (cluster, node)→prim 매핑")
         return len(index)
@@ -347,6 +361,7 @@ class _MaterialMixin:
         for node_path in node_paths:
             self._glass_cube_suppressed_nodes.add(node_path)
             self._node_pulse_start.pop(node_path, None)
+            self._node_persistent_overlay.discard(node_path)
             handles = self._glass_cube_cache.get(node_path)
             if handles:
                 self._hide_glass_cube(handles)
@@ -422,7 +437,7 @@ class _MaterialMixin:
         """
         status 변화 시 1회만 호출되어 diffuse 색만 교체.
         emissive 는 tick_pulse 가 매 프레임 관리하므로 여기서 건드리지 않는다.
-        UNKNOWN / WARNING / CRITICAL 은 no-op (Phase 1 범위 밖).
+        지원 status 는 QueryServer public node-state 3-enum 뿐이다.
         """
         handles = self._glass_cube_cache.get(node_path)
         if not handles:
@@ -442,16 +457,18 @@ class _MaterialMixin:
             diffuse.Set(Gf.Vec3f(*GLASS_CUBE_HEALTHY_COLOR))
         elif status == "DISCONNECTED":
             diffuse.Set(Gf.Vec3f(*GLASS_CUBE_DISCONNECTED_COLOR))
-        # 그 외 status 는 diffuse 건드리지 않음
+        elif status == "MISSING":
+            diffuse.Set(Gf.Vec3f(*GLASS_CUBE_MISSING_COLOR))
+        # parser 에서 unknown status 는 drop 하므로 그 외 status 는 no-op
 
     def apply_node_state(self, envelope: dict) -> None:
         """
         canonical node-state envelope 1개를 소비.
         _server_index / _cluster_box_index 에 없는 노드는 경고 로그 + 드롭.
 
-        HEALTHY 수신 시 overlay cube 를 잠깐 visible 로 올리고,
-        tick_pulse() 에서 다시 invisible 로 내린다. 그 외 status 는 항상 invisible.
-        이 경로에서는 색상 pulse/emissive 를 쓰지 않는다.
+        HEALTHY 는 normal/clear 상태로 overlay 를 숨긴다.
+        DISCONNECTED/MISSING 은 glow 없이 persistent overlay 로 표시한다.
+        DC_GLASS_CUBE_PULSE=1 일 때만 HEALTHY heartbeat blink 를 유지한다.
         """
         if not self._stage:
             return
@@ -490,13 +507,23 @@ class _MaterialMixin:
             return
 
         if prim_path in self._glass_cube_suppressed_nodes:
+            self._node_persistent_overlay.discard(prim_path)
             self._hide_glass_cube(handles)
             return
 
-        # [수정] DC_GLASS_CUBE_PULSE=0 이면 메트릭(node-state) 수신 시 GlassCube 를
-        #        반짝이지 않게 한다 — visible 로 올리지 않고 항상 숨김 유지.
-        if not GLASS_CUBE_PULSE_ENABLED:
+        self._apply_diffuse_for_status(prim_path, status)
+
+        if status in ("DISCONNECTED", "MISSING"):
+            self._node_persistent_overlay.add(prim_path)
             self._node_pulse_start.pop(prim_path, None)
+            self._show_glass_cube(handles)
+            self._apply_diffuse_for_status(prim_path, status)
+            return
+
+        self._node_persistent_overlay.discard(prim_path)
+
+        # [수정] DC_GLASS_CUBE_PULSE=0 이면 HEALTHY heartbeat blink 도 비활성화한다.
+        if not GLASS_CUBE_PULSE_ENABLED:
             self._hide_glass_cube(handles)
             return
 
@@ -538,7 +565,7 @@ class _MaterialMixin:
 
         # Baseline policy: active HEALTHY blink 외에는 overlay cube 가 남아 있지 않아야 한다.
         for node_path, handles in self._glass_cube_cache.items():
-            if node_path not in self._node_pulse_start:
+            if node_path not in self._node_pulse_start and node_path not in self._node_persistent_overlay:
                 self._hide_glass_cube(handles)
 
     # ──────────────────────────────────────────────────────────────────────

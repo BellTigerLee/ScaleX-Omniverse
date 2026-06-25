@@ -17,8 +17,8 @@ class _NodeMetricsMixin:
         if not isinstance(msg, dict):
             return
 
-        cluster = msg.get("cluster", "")
-        node = msg.get("node", "")
+        cluster = msg.get("cluster") or msg.get("cluster_id") or ""
+        node = msg.get("node") or msg.get("node_id") or msg.get("box_id") or msg.get("server_id") or ""
         if not node:
             return
 
@@ -26,7 +26,7 @@ class _NodeMetricsMixin:
         if prim_path is None:
             return
 
-        self._node_metrics_cache.setdefault(prim_path, {})[node] = msg
+        self._node_metrics_cache.setdefault(prim_path, {})[str(node)] = msg
 
     def get_node_metrics(self, prim_path: str) -> list:
         """Return latest original metrics messages for all nodes mapped to prim_path."""

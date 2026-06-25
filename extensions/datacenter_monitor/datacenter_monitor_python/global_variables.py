@@ -20,7 +20,7 @@ EXTENSION_ROOT        = Path(__file__).resolve().parent.parent
 # None 이면 이미 열려있는 stage를 그대로 사용합니다.
 # ─────────────────────────────────────────────────────────────────────────────
 # ↓ 실제 USD 파일 경로로 변경하세요. None이면 자동 로드를 건너뜁니다.
-MAIN_STAGE_USD_PATH = EXTENSION_ROOT / "assets" / "ScaleX_POD_Project" / "ScaleX_Twin.usd"
+MAIN_STAGE_USD_PATH = EXTENSION_ROOT / "assets" / "ScaleX_Twin.usd"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # [수정 포인트 - USD HIERARCHY]
@@ -164,8 +164,7 @@ ALERT_MARKER_Z_OFFSET  = 0.5   # rack 상단에서 얼마나 위에 표시할지
 # Kafka 이벤트(WARNING/CRITICAL) 발생 시 rack 위에 표시할 ImagePanel USD
 # ─────────────────────────────────────────────────────────────────────────────
 IMAGE_PANEL_USD_PATH     = str(
-    EXTENSION_ROOT / "assets" / "ScaleX_POD_Project"
-    / "subcomponents" / "Others" / "ImagePanel.usd"
+    EXTENSION_ROOT / "assets" / "subcomponents" / "Others" / "ImagePanel.usd"
 )
 EVENT_PANEL_LIFETIME_SEC = 5.0   # 패널이 화면에 표시되는 시간 (초)
 
@@ -213,7 +212,8 @@ GLASS_CUBE_PULSE_ENABLED     = _env_bool("DC_GLASS_CUBE_PULSE", True)
 GLASS_CUBE_ENABLE_EMISSION   = False
 GLASS_CUBE_OPACITY_CONSTANT  = 0
 GLASS_CUBE_HEALTHY_COLOR      = (0.05, 1.5, 0.05)  # HEALTHY (녹색, 튜닝 대상)
-GLASS_CUBE_DISCONNECTED_COLOR = (0.35, 0.35, 0.35)  # DISCONNECTED (어두운 회색)
+GLASS_CUBE_DISCONNECTED_COLOR = (0.8, 0.05, 0.05)  # DISCONNECTED (노드 NotReady)
+GLASS_CUBE_MISSING_COLOR      = (0.45, 0.15, 1.0)  # MISSING (Ready 이지만 telemetry 누락)
 GLASS_CUBE_WARNING_COLOR     = (1.0, 0.5,  0.0) # WARNING 상태 (주황)
 GLASS_CUBE_CRITICAL_COLOR    = (1.0, 0.0,  0.0) # CRITICAL 상태 (빨강)
 GLASS_CUBE_EMISSIVE_HEALTHY  = 0.0001              # HEALTHY emissive 강도 (꺼짐)

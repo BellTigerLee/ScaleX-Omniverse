@@ -23,6 +23,39 @@ def _msg(cluster: str, node: str, ts: int, cpu: float = 0.1) -> dict:
     }
 
 
+def test_cache_preserves_queryserver_extra_fields():
+    prim_path = "/World/Ecclab_Cluster/Rack_A/Box_Work2"
+    cache = _CacheHarness({("ecclab", "work2"): prim_path})
+    msg = _msg("ecclab", "work2", 100)
+    msg["schema_version"] = 1
+    msg["kind"] = "node_metrics_snapshot"
+    msg["telemetry"] = {"source": "victoriametrics", "lag_sec": 10.1}
+    msg["kubernetes"] = {"ready": True}
+    msg["future_field"] = {"kept": True}
+
+    cache.cache_node_metrics(msg)
+
+    cached = cache.get_node_metrics(prim_path)
+    assert cached == [msg]
+    assert cached[0]["telemetry"]["lag_sec"] == 10.1
+    assert cached[0]["future_field"] == {"kept": True}
+
+
+def test_cache_accepts_legacy_cluster_and_node_aliases():
+    prim_path = "/World/DataX_Cluster/Rack_A/Box_1"
+    cache = _CacheHarness({("datax", "Box_1"): prim_path})
+    msg = {
+        "ts": 100,
+        "cluster_id": "datax",
+        "box_id": "Box_1",
+        "metrics": {"cpu": {"util": 0.1}},
+    }
+
+    cache.cache_node_metrics(msg)
+
+    assert cache.get_node_metrics(prim_path) == [msg]
+
+
 def test_cache_one_node_for_one_prim():
     prim_path = "/World/TwinX_Cluster/Rack_A/Box_1"
     cache = _CacheHarness({("twinx", "work1"): prim_path})
