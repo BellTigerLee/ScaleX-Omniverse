@@ -61,6 +61,8 @@ class _MaterialMixin:
         # (cluster_lower, node_name) → prim_name — REST topology 에서 로드.
         # 비어있으면 _resolve_prim_path 가 BOX_ prefix 휴리스틱 fallback 을 사용.
         self._cluster_node_to_prim: dict = {}
+        # REST topology raw 응답. USD hierarchy 탐색 실패 시 prim_name 기반 fallback 에 사용.
+        self._topology_api_data: dict | None = None
         # prim_path → HEALTHY 수신 후 visible 로 유지할 시작 시각.
         # tick_pulse 가 짧은 visible 구간 뒤 다시 invisible 로 내린다.
         self._node_pulse_start: dict[str, float] = {}
@@ -133,11 +135,19 @@ class _MaterialMixin:
         URL 에서 토폴로지 JSON 을 받아 (cluster, node) → prim_name 인덱스를 채운다.
         실패 시 기존 인덱스를 유지. 로드된 매핑 개수를 반환.
         """
-        from .node_index import fetch_topology_index
-        index = fetch_topology_index(url)
-        if index is None:
+        from .node_index import fetch_topology_response, parse_topology_response
+        data = fetch_topology_response(url)
+        if data is None:
             print(f"[SceneManager] node index 로드 실패 — fallback 휴리스틱으로 동작 ({url})")
             return 0
+
+        try:
+            index = parse_topology_response(data)
+        except Exception as e:
+            print(f"[SceneManager] node index 스키마 파싱 실패 — fallback 휴리스틱으로 동작 ({e})")
+            return 0
+
+        self._topology_api_data = data
         self._cluster_node_to_prim = index
         print(f"[SceneManager] node index 로드 완료: {len(index)}개 (cluster, node)→prim 매핑")
         return len(index)
