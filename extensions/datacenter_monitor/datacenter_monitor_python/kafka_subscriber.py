@@ -17,36 +17,82 @@ import threading
 import time
 
 
+# ── QueryServer live payload 파서 ─────────────────────────────────────────
+# QueryServer VictoriaMetricsBridge 의 canonical Kafka payload 를 소비한다.
+
+_METRIC_REQUIRED_FIELDS = ("cluster", "node", "ts", "metrics")
+
+
+def _decode_json(raw: bytes, parser_name: str):
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        print(f"[{parser_name}] JSON/UTF-8 디코드 실패: {e}")
+        return None
+    if not isinstance(data, dict):
+        print(f"[{parser_name}] 최상위가 dict 아님: {type(data).__name__}")
+        return None
+    return data
+
+
+def parse_metric_snapshot(raw: bytes):
+    """
+    datacenter.metrics payload (UTF-8 JSON bytes) → dict 또는 None.
+
+    QueryServer production path 는 schema_version=1, kind=node_metrics_snapshot 을
+    발행하지만, replay/dummy 호환을 위해 최소 필드만 검증하고 extra field 는 보존한다.
+    이 topic 은 metric cache/detail 전용이며 node visual status 의 정본이 아니다.
+    """
+    data = _decode_json(raw, "MetricSnapshotParser")
+    if data is None:
+        return None
+
+    # 구 demo/replay payload 호환 alias. 원본 field 는 그대로 보존한다.
+    if "cluster" not in data and data.get("cluster_id"):
+        data["cluster"] = data["cluster_id"]
+    if "node" not in data:
+        node = data.get("node_id") or data.get("box_id") or data.get("server_id")
+        if node:
+            data["node"] = node
+
+    missing = [f for f in _METRIC_REQUIRED_FIELDS if f not in data]
+    if missing:
+        print(f"[MetricSnapshotParser] 필수 필드 누락 {missing}, 드롭: {list(data.keys())}")
+        return None
+
+    if not isinstance(data.get("metrics"), dict):
+        print(
+            f"[MetricSnapshotParser] metrics 가 dict 아님: "
+            f"{type(data.get('metrics')).__name__}"
+        )
+        return None
+
+    return data
+
+
 # ── Canonical node-state envelope 파서 ────────────────────────────────────
-# 2026-04-17-node-state-message-schema-design.md §5 envelope 를 그대로 소비.
 
 _NODE_STATE_REQUIRED_FIELDS = (
     "kind", "scope", "cluster", "node", "status",
     "ts", "state_since", "last_seen_at", "gap_sec", "reasons",
 )
 _NODE_STATE_VALID_STATUSES = frozenset(
-    ("HEALTHY", "WARNING", "CRITICAL", "DISCONNECTED", "UNKNOWN")
+    ("HEALTHY", "DISCONNECTED", "MISSING")
 )
 
 
 def parse_node_state_message(raw: bytes):
     """
-    Flink canonical node-state envelope (UTF-8 JSON bytes) → dict 또는 None.
+    QueryServer canonical node-state envelope (UTF-8 JSON bytes) → dict 또는 None.
 
     검증:
       - JSON 디코딩 성공
       - 필수 필드(_NODE_STATE_REQUIRED_FIELDS) 전부 존재
-      - status 값이 5-enum 중 하나
+      - status 값이 public 3-enum 중 하나
     실패 시 경고 로그를 남기고 None 반환 (호출자가 드롭).
     """
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        print(f"[NodeStateParser] JSON/UTF-8 디코드 실패: {e}")
-        return None
-
-    if not isinstance(data, dict):
-        print(f"[NodeStateParser] 최상위가 dict 아님: {type(data).__name__}")
+    data = _decode_json(raw, "NodeStateParser")
+    if data is None:
         return None
 
     missing = [f for f in _NODE_STATE_REQUIRED_FIELDS if f not in data]
@@ -376,31 +422,13 @@ class KafkaSubscriber:
         }
         """
         try:
-            data = json.loads(raw.decode("utf-8"))
-
-
-            # cluster 또는 node 중 하나는 있어야 함 (신 포맷 우선, 구 포맷 fallback)
-            if not data.get("cluster") and not data.get("cluster_id") \
-               and not data.get("node") and not data.get("box_id") \
-               and not data.get("server_id") and not data.get("node_id"):
-                print(f"[KafkaSubscriber] ⚠️ 필수 필드 없음, 메시지 드롭: {list(data.keys())}")
+            data = parse_metric_snapshot(raw)
+            if data is None:
                 return None
-
-            cluster = data.get("cluster") or data.get("cluster_id")
-            node    = data.get("node") or data.get("box_id", "-")
-            status  = data.get("status") or data.get("metrics", {}).get("status", "?")
-            temp    = (data.get("metrics", {}).get("gpu", {}).get("temp")
-                       or data.get("metrics", {}).get("temperature", "?"))
-            # print(
-            #     f"[KafkaSubscriber] ✅ 수신 cluster={cluster} "
-            #     f"rack={data.get('rack_id','-')} node={node} "
-            #     f"status={status} temp={temp}°C"
-            # )
             time.sleep(0.001)
-
             return data
 
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        except Exception as e:
             print(f"[KafkaSubscriber] 메시지 파싱 실패: {e}")
             return None
 
