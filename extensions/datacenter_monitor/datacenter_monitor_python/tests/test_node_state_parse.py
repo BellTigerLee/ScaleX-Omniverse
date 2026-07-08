@@ -9,9 +9,10 @@ from kafka_subscriber import parse_node_state_message
 
 def _valid_envelope() -> dict:
     return {
-        "kind":            "transition",
+        "schema_version":  1,
+        "kind":            "snapshot",
         "scope":           "node",
-        "cluster":         "datax",
+        "cluster":         "ecclab",
         "node":            "work2",
         "pod":             None,
         "status":          "HEALTHY",
@@ -21,6 +22,8 @@ def _valid_envelope() -> dict:
         "previous_status": "DISCONNECTED",
         "last_seen_at":    1744441125000,
         "gap_sec":         75,
+        "node_ready":      True,
+        "telemetry_lag_sec": 75,
     }
 
 
@@ -57,6 +60,12 @@ def test_parse_snapshot_kind():
     assert parse_node_state_message(_to_bytes(env)) is not None
 
 
+def test_parse_transition_kind_allowed_for_future_sources():
+    env = _valid_envelope()
+    env["kind"] = "transition"
+    assert parse_node_state_message(_to_bytes(env)) is not None
+
+
 @pytest.mark.parametrize("missing_field", [
     "kind", "scope", "cluster", "node", "status",
     "ts", "state_since", "last_seen_at", "gap_sec", "reasons",
@@ -74,11 +83,28 @@ def test_parse_invalid_status_enum_returns_none(bad_status):
     assert parse_node_state_message(_to_bytes(env)) is None
 
 
-@pytest.mark.parametrize("accepted_status", ["HEALTHY", "WARNING", "CRITICAL", "DISCONNECTED", "UNKNOWN"])
+@pytest.mark.parametrize("accepted_status", ["HEALTHY", "DISCONNECTED", "MISSING"])
 def test_parse_accepts_all_canonical_status_values(accepted_status):
     env = _valid_envelope()
     env["status"] = accepted_status
     assert parse_node_state_message(_to_bytes(env)) is not None
+
+
+@pytest.mark.parametrize("legacy_status", ["WARNING", "CRITICAL", "UNKNOWN"])
+def test_parse_rejects_legacy_status_values(legacy_status):
+    env = _valid_envelope()
+    env["status"] = legacy_status
+    assert parse_node_state_message(_to_bytes(env)) is None
+
+
+def test_parse_preserves_queryserver_optional_fields():
+    env = _valid_envelope()
+    parsed = parse_node_state_message(_to_bytes(env))
+    assert parsed is not None
+    assert parsed["schema_version"] == 1
+    assert parsed["previous_status"] == "DISCONNECTED"
+    assert parsed["node_ready"] is True
+    assert parsed["telemetry_lag_sec"] == 75
 
 
 def test_parse_non_json_returns_none():

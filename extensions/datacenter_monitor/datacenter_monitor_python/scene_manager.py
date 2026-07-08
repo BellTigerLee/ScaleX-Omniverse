@@ -95,6 +95,7 @@ class SceneManager(
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
         self._clear_glass_cube_suppression()
+        self._node_persistent_overlay.clear()
         self._node_metrics_cache.clear()
         self._node_original_translate.clear()
 
@@ -119,6 +120,7 @@ class SceneManager(
         self._node_material_cache.clear()
         self._glass_cube_cache.clear()
         self._clear_glass_cube_suppression()
+        self._node_persistent_overlay.clear()
         self._node_metrics_cache.clear()
         self._node_original_translate.clear()
         # Stage C 캐시 (_NodeVisibilityMixin)
